@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Generador de Flyers con IA</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);color:#e2e8f0;min-height:100vh;padding:24px}
+.top{max-width:1100px;margin:0 auto 20px}
+h1{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;background:linear-gradient(135deg,#f59e0b,#ef4444,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{color:#64748b;font-size:13px;margin-top:3px}
+.layout{display:grid;grid-template-columns:320px 1fr;gap:18px;max-width:1100px;margin:0 auto}
+.panel{background:linear-gradient(145deg,#1e293b,#334155);border-radius:16px;padding:18px;border:1px solid rgba(255,255,255,.07);box-shadow:0 8px 32px rgba(0,0,0,.3)}
+label{display:block;font-size:10px;font-weight:600;color:#94a3b8;margin:12px 0 4px;text-transform:uppercase;letter-spacing:.6px}
+label:first-of-type{margin-top:0}
+input,select,textarea{width:100%;padding:9px 12px;border:1.5px solid #475569;border-radius:9px;font-size:13px;outline:none;font-family:'DM Sans',sans-serif;background:#0f172a;color:#e2e8f0;transition:all .2s;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.15)}
+textarea{min-height:70px}
+.api-box{background:rgba(139,92,246,.08);border:1.5px solid rgba(139,92,246,.3);border-radius:9px;padding:12px;margin-bottom:14px}
+.api-box p{font-size:11px;color:#a78bfa;margin-bottom:8px;line-height:1.5}
+.api-box input{background:#0f172a;border-color:#475569;font-size:12px;font-family:monospace}
+.fmt-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.fb{padding:9px 4px;border-radius:9px;border:1.5px solid #475569;background:#0f172a;color:#94a3b8;font-size:10px;font-weight:600;cursor:pointer;text-align:center;transition:all .2s;font-family:'DM Sans',sans-serif;line-height:1.4}
+.fb:hover{border-color:#8b5cf6;color:#a78bfa}
+.fb.act{border-color:#8b5cf6;background:rgba(139,92,246,.15);color:#a78bfa}
+.pal-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px}
+.pp{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .2s;flex-shrink:0}
+.pp.act{border-color:#fff;box-shadow:0 0 0 2px #8b5cf6}
+.btn-gen{width:100%;padding:13px;border:none;border-radius:11px;font-weight:700;font-size:14px;cursor:pointer;font-family:'Syne',sans-serif;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;margin-top:14px;transition:all .25s;box-shadow:0 4px 18px rgba(99,102,241,.35)}
+.btn-gen:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(99,102,241,.5)}
+.btn-gen:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.right-col{display:flex;flex-direction:column;gap:14px}
+.prev-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.prev-head span{font-size:13px;font-weight:600;color:#f1f5f9}
+.act-row{display:none;gap:8px}
+.btn-sm{padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.btn-sm:hover{background:rgba(255,255,255,.12)}
+.btn-dl{background:linear-gradient(135deg,#10b981,#059669);border-color:transparent;color:#fff}
+.canvas-wrap{display:flex;align-items:center;justify-content:center;min-height:400px}
+.empty-st{text-align:center;color:#475569;padding:30px}
+.empty-st .ico{font-size:48px;margin-bottom:10px}
+.loader{display:none;flex-direction:column;align-items:center;gap:10px;padding:30px}
+.spinner{width:40px;height:40px;border:3px solid rgba(139,92,246,.2);border-top-color:#8b5cf6;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader p{font-size:12px;color:#a78bfa;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+canvas#fc{border-radius:10px;display:none;box-shadow:0 12px 40px rgba(0,0,0,.4)}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:#f87171;display:none;margin-top:8px;line-height:1.5}
+.tip{font-size:10px;color:#64748b;margin-top:4px;line-height:1.4}
+.img-status{font-size:10px;color:#64748b;text-align:center;margin-top:6px;display:none}
+@media(max-width:860px){.layout{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>🎨 Generador de Flyers con IA</h1>
+  <p class="sub">Google Gemini + Pollinations AI • Gratis</p>
+</div>
+
+<div class="layout">
+  <div>
+    <div class="panel">
+      <div class="api-box">
+        <p>🔑 Pega tu API Key de Google Gemini.<br>Ve a <strong>aistudio.google.com</strong> → Get API Key</p>
+        <input type="password" id="apiKey" placeholder="AIzaSy...tu-key-aqui">
+        <p class="tip">Tu key solo se usa en tu navegador, nunca se comparte.</p>
+      </div>
+
+      <label>Describe tu flyer</label>
+      <textarea id="fi" placeholder="Ej: Promoción de pizza 2x1 este fin de semana..."></textarea>
+
+      <label>Formato</label>
+      <div class="fmt-grid">
+        <button class="fb act" data-f="sq" onclick="setFmt(this)">⬛ Cuadrado<br><span style="font-size:9px;opacity:.6">1:1</span></button>
+        <button class="fb" data-f="st" onclick="setFmt(this)">📱 Story<br><span style="font-size:9px;opacity:.6">9:16</span></button>
+        <button class="fb" data-f="ln" onclick="setFmt(this)">🖼️ Banner<br><span style="font-size:9px;opacity:.6">16:9</span></button>
+      </div>
+
+      <label>Paleta</label>
+      <div class="pal-row">
+        <div class="pp act" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)" data-p="0" onclick="setPal(this)"></div>
+        <div class="pp" style="background:linear-gradient(135deg,#ef4444,#f59e0b)" data-p="1" onclick="setPal(this)"></div>
+        <div class="pp" style="background:linear-gradient(135deg,#10b981,#06b6d4)" data-p="2" onclick="setPal(this)"></div>
+        <div class="pp" style="background:linear-gradient(135deg,#f59e0b,#fde68a)" data-p="3" onclick="setPal(this)"></div>
+        <div class="pp" style="background:linear-gradient(135deg,#ec4899,#8b5cf6)" data-p="4" onclick="setPal(this)"></div>
+        <div class="pp" style="background:linear-gradient(135deg,#0f172a,#334155)" data-p="5" onclick="setPal(this)"></div>
+      </div>
+
+      <label>Estilo</label>
+      <select id="fst">
+        <option value="moderno y llamativo">🔥 Moderno y llamativo</option>
+        <option value="elegante y minimalista">✨ Elegante y minimalista</option>
+        <option value="divertido y colorido">🎉 Divertido y colorido</option>
+        <option value="corporativo y profesional">💼 Corporativo</option>
+      </select>
+
+      <label>Idioma</label>
+      <select id="fla">
+        <option>Español</option>
+        <option>Inglés</option>
+        <option>Portugués</option>
+      </select>
+
+      <button class="btn-gen" id="genBtn" onclick="gen()">✨ Generar Flyer con IA</button>
+      <div class="err" id="errB"></div>
+    </div>
+
+    <div class="panel" id="editPanel" style="margin-top:14px;display:none">
+      <label style="margin-top:0">✏️ Editar en vivo</label>
+      <div class="edit-grid">
+        <div>
+          <label style="margin-top:0">Título</label>
+          <input type="text" id="eT" oninput="redraw(null)">
+        </div>
+        <div>
+          <label style="margin-top:0">CTA</label>
+          <input type="text" id="eC" oninput="redraw(null)">
+        </div>
+      </div>
+      <label>Descripción</label>
+      <input type="text" id="eD" oninput="redraw(null)">
+      <label>Hashtags</label>
+      <input type="text" id="eH" oninput="redraw(null)">
+    </div>
+  </div>
+
+  <div class="right-col">
+    <div class="panel">
+      <div class="prev-head">
+        <span>👁️ Vista previa</span>
+        <div class="act-row" id="actRow">
+          <button class="btn-sm" onclick="resetF()">🔄 Nuevo</button>
+          <button class="btn-sm btn-dl" onclick="dlFlyer()">⬇️ Descargar PNG</button>
+        </div>
+      </div>
+      <div class="canvas-wrap" id="cWrap">
+        <div class="empty-st" id="emptyS">
+          <div class="ico">🎨</div>
+          <p>Tu flyer aparecerá aquí<br><span style="font-size:11px;color:#334155">Escribe tu idea y presiona Generar</span></p>
+        </div>
+        <div class="loader" id="loaderS">
+          <div class="spinner"></div>
+          <p id="loadM">Conectando con Gemini...</p>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+          <canvas id="fc"></canvas>
+          <div class="img-status" id="imgStatus">🖼️ Cargando imagen de fondo...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var curPal=0,curFmt='sq',curData=null,cachedImg=null;
+var pals=[
+  {a:'#4f46e5',b:'#7c3aed',c:'#1e1b4b',acc:'#a5b4fc'},
+  {a:'#dc2626',b:'#d97706',c:'#7f1d1d',acc:'#fde68a'},
+  {a:'#059669',b:'#0891b2',c:'#064e3b',acc:'#6ee7b7'},
+  {a:'#b45309',b:'#d97706',c:'#451a03',acc:'#fde68a'},
+  {a:'#be185d',b:'#7c3aed',c:'#500724',acc:'#f9a8d4'},
+  {a:'#1e293b',b:'#334155',c:'#020617',acc:'#818cf8'}
+];
+
+function setFmt(btn){document.querySelectorAll('.fb').forEach(b=>b.classList.remove('act'));btn.classList.add('act');curFmt=btn.dataset.f;if(curData)redraw(cachedImg);}
+function setPal(el){document.querySelectorAll('.pp').forEach(p=>p.classList.remove('act'));el.classList.add('act');curPal=parseInt(el.dataset.p);if(curData)redraw(cachedImg);}
+
+var lMs=['Conectando con Gemini...','Creando textos con IA...','Generando imagen...','Componiendo el flyer...'];
+var lInt,lI=0;
+function startLoad(){lI=0;document.getElementById('loadM').textContent=lMs[0];lInt=setInterval(()=>{lI=(lI+1)%lMs.length;document.getElementById('loadM').textContent=lMs[lI];},1800);document.getElementById('loaderS').style.display='flex';document.getElementById('emptyS').style.display='none';document.getElementById('fc').style.display='none';}
+function stopLoad(){clearInterval(lInt);document.getElementById('loaderS').style.display='none';}
+function showErr(m){var b=document.getElementById('errB');b.innerHTML=m;b.style.display='block';setTimeout(()=>b.style.display='none',8000);}
+
+async function gen(){
+  var key=document.getElementById('apiKey').value.trim();
+  if(!key){showErr('⚠️ Primero pega tu API Key de Gemini.');return;}
+  var prompt=document.getElementById('fi').value.trim();
+  if(!prompt){showErr('⚠️ Escribe una descripción para el flyer.');return;}
+
+  document.getElementById('genBtn').disabled=true;
+  document.getElementById('errB').style.display='none';
+  cachedImg=null;
+  startLoad();
+
+  try{
+    var style=document.getElementById('fst').value;
+    var lang=document.getElementById('fla').value;
+
+    var resp=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+key,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        contents:[{parts:[{text:'Eres experto en marketing. Genera contenido en '+lang+' estilo '+style+'. Responde SOLO JSON sin markdown. Formato: {"badge":"1-3 palabras","title":"titulo maximo 6 palabras","desc":"frase maximo 15 palabras","cta":"maximo 3 palabras","tags":"3 hashtags","emoji":"1 emoji","imgPrompt":"imagen fondo en ingles sin texto maximo 6 palabras"}\n\nFlyer para: '+prompt}]}],
+        generationConfig:{temperature:0.8,maxOutputTokens:250}
+      })
+    });
+
+    if(resp.status===429){throw new Error('Límite alcanzado. Espera 1 minuto e intenta de nuevo.');}
+    if(resp.status===400){throw new Error('API Key inválida. Verifica tu key en aistudio.google.com');}
+    if(!resp.ok){var ed=await resp.json();throw new Error(ed.error?.message||'Error '+resp.status);}
+
+    var data=await resp.json();
+    var txt=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    txt=txt.replace(/```json|```/g,'').trim();
+
+    // Limpiar posibles caracteres extra antes del {
+    var start=txt.indexOf('{');
+    var end=txt.lastIndexOf('}');
+    if(start>=0&&end>=0)txt=txt.slice(start,end+1);
+
+    curData=JSON.parse(txt);
+
+    // Mostrar flyer INMEDIATAMENTE sin esperar imagen
+    stopLoad();
+    redraw(null);
+    document.getElementById('editPanel').style.display='block';
+    document.getElementById('actRow').style.display='flex';
+    document.getElementById('eT').value=curData.title||'';
+    document.getElementById('eD').value=curData.desc||'';
+    document.getElementById('eC').value=curData.cta||'';
+    document.getElementById('eH').value=curData.tags||'';
+
+    // Cargar imagen en segundo plano
+    document.getElementById('imgStatus').style.display='block';
+    var imgUrl='https://image.pollinations.ai/prompt/'+encodeURIComponent((curData.imgPrompt||prompt)+', no text, vibrant')+
+      '?width=800&height=800&nologo=true&seed='+Math.floor(Math.random()*9999);
+    var img=new Image();
+    img.crossOrigin='anonymous';
+    img.onload=function(){
+      cachedImg=img;
+      redraw(img);
+      document.getElementById('imgStatus').style.display='none';
+    };
+    img.onerror=function(){
+      document.getElementById('imgStatus').textContent='(Imagen no disponible, usando fondo de color)';
+      setTimeout(()=>document.getElementById('imgStatus').style.display='none',2000);
+    };
+    img.src=imgUrl;
+
+  }catch(e){
+    stopLoad();
+    document.getElementById('emptyS').style.display='block';
+    showErr('❌ '+e.message);
+  }finally{
+    document.getElementById('genBtn').disabled=false;
+  }
+}
+
+function redraw(img){
+  if(!curData)return;
+  var d={
+    badge:curData.badge||'',
+    title:document.getElementById('eT')?document.getElementById('eT').value:curData.title||'',
+    desc:document.getElementById('eD')?document.getElementById('eD').value:curData.desc||'',
+    cta:document.getElementById('eC')?document.getElementById('eC').value:curData.cta||'',
+    tags:document.getElementById('eH')?document.getElementById('eH').value:curData.tags||'',
+    emoji:curData.emoji||'✨'
+  };
+  var dims={sq:[480,480],st:[270,480],ln:[480,270]};
+  var wh=dims[curFmt]||dims.sq;
+  var W=wh[0],H=wh[1];
+  var cv=document.getElementById('fc');
+  cv.width=W*2;cv.height=H*2;
+  cv.style.width=W+'px';cv.style.height=H+'px';
+  cv.style.display='block';
+  var ctx=cv.getContext('2d');
+  ctx.scale(2,2);
+  var pal=pals[curPal];
+
+  // Fondo gradiente
+  var grd=ctx.createLinearGradient(0,0,W,H);
+  grd.addColorStop(0,pal.a);grd.addColorStop(1,pal.b);
+  ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);
+
+  // Imagen si existe
+  if(img){ctx.save();ctx.globalAlpha=0.4;ctx.drawImage(img,0,0,W,H);ctx.restore();}
+
+  // Círculos decorativos
+  ctx.save();
+  ctx.globalAlpha=0.1;ctx.fillStyle='#fff';
+  ctx.beginPath();ctx.arc(W*0.85,H*0.12,H*0.3,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(W*0.08,H*0.8,H*0.2,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=0.05;
+  ctx.beginPath();ctx.arc(W*0.5,H*0.4,H*0.42,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+
+  // Emoji de fondo
+  ctx.save();
+  ctx.globalAlpha=0.18;
+  var emSz=Math.min(W,H)*0.45;
+  ctx.font=emSz+'px serif';
+  ctx.textAlign='center';
+  ctx.fillText(d.emoji,W*0.75,H*0.5+emSz*0.3);
+  ctx.restore();
+
+  // Overlay abajo
+  var ov=ctx.createLinearGradient(0,H*0.2,0,H);
+  ov.addColorStop(0,'rgba(0,0,0,0)');
+  ov.addColorStop(0.5,'rgba(0,0,0,0.5)');
+  ov.addColorStop(1,'rgba(0,0,0,0.88)');
+  ctx.fillStyle=ov;ctx.fillRect(0,0,W,H);
+
+  // Badge
+  ctx.save();
+  ctx.font='bold 9px sans-serif';
+  var bTxt=(d.badge||'').toUpperCase();
+  var bW=ctx.measureText(bTxt).width+24;
+  ctx.fillStyle='rgba(255,255,255,0.18)';
+  rr(ctx,20,H-195,bW,20,10);ctx.fill();
+  ctx.fillStyle=pal.acc;ctx.textAlign='left';
+  ctx.fillText(bTxt,32,H-181);
+  ctx.restore();
+
+  // Título
+  ctx.save();
+  ctx.fillStyle='#fff';ctx.textAlign='left';
+  var tSz=Math.max(17,Math.min(25,W/9));
+  ctx.font='bold '+tSz+'px sans-serif';
+  wt(ctx,d.title,20,H-162,W-40,tSz+6);
+  ctx.restore();
+
+  // Descripción
+  ctx.save();
+  ctx.fillStyle='rgba(255,255,255,0.75)';
+  ctx.font='11px sans-serif';ctx.textAlign='left';
+  wt(ctx,d.desc,20,H-112,W-40,17);
+  ctx.restore();
+
+  // Separador
+  ctx.save();
+  ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=0.5;
+  ctx.beginPath();ctx.moveTo(20,H-64);ctx.lineTo(W-20,H-64);ctx.stroke();
+  ctx.restore();
+
+  // Tags
+  ctx.save();
+  ctx.fillStyle='rgba(255,255,255,0.45)';
+  ctx.font='9px sans-serif';ctx.textAlign='left';
+  ctx.fillText(d.tags,20,H-46);
+  ctx.restore();
+
+  // CTA
+  ctx.save();
+  ctx.font='bold 11px sans-serif';
+  var ctaW=Math.max(ctx.measureText(d.cta).width+36,80);
+  var ctaX=W-ctaW-18;
+  ctx.fillStyle=pal.acc;
+  rr(ctx,ctaX,H-62,ctaW,24,12);ctx.fill();
+  ctx.fillStyle=pal.c;ctx.textAlign='center';
+  ctx.fillText(d.cta,ctaX+ctaW/2,H-45);
+  ctx.restore();
+}
+
+function rr(ctx,x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+}
+function wt(ctx,text,x,y,maxW,lh){
+  if(!text)return;
+  var words=text.split(' '),line='',lines=[];
+  words.forEach(function(w){var t=line+w+' ';if(ctx.measureText(t).width>maxW&&line){lines.push(line.trim());line=w+' ';}else line=t;});
+  if(line)lines.push(line.trim());
+  lines.slice(0,3).forEach(function(l,i){ctx.fillText(l,x,y+i*lh);});
+}
+
+function resetF(){
+  document.getElementById('emptyS').style.display='block';
+  document.getElementById('fc').style.display='none';
+  document.getElementById('editPanel').style.display='none';
+  document.getElementById('actRow').style.display='none';
+  document.getElementById('imgStatus').style.display='none';
+  document.getElementById('fi').value='';
+  curData=null;cachedImg=null;
+}
+function dlFlyer(){
+  var cv=document.getElementById('fc');
+  if(!cv||cv.style.display==='none')return;
+  var a=document.createElement('a');
+  a.download='flyer-ia-'+Date.now()+'.png';
+  a.href=cv.toDataURL('image/png');a.click();
+}
+</script>
+</body>
+</html>
